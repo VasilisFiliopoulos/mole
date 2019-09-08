@@ -12,13 +12,13 @@ delay = 10
 stop = False
 database_list = []
 r = requests.Session()
-url="http://192.168.1.10:8080/dvwa/vulnerabilities/sqli_blind/"
+url="http://192.168.1.26:8080/dvwa/vulnerabilities/sqli_blind/"
 data = {
     'id': "1",
     'Submit': 'Submit'
     }
 cookies = {
-    'PHPSESSID': '5annns7gjgmt0dkabk1rr7nobe',
+    'PHPSESSID': 'm17755srpd9b5jcc8712sivlbr',
     'security': 'low'
     }
 pass_phrase = 'User ID exists in the database.'
@@ -31,29 +31,29 @@ def print_promp():
     sp.call('clear', shell=True)
 
     mole = ("\n"+
-    "                                                                         _.-=-._            \n"+
-    "                                                                      o~`  '  > `.          \n"+
-    "                                                                      `.  ,       :         \n"+
-    "                                                                       `'-.__/    `.        \n"+
-    "                                                                          /       ::        \n"+
-    "                                          88                             / .:    .:|        \n"+
-    "                                          88                            :       .::!.       \n"+
-    "                                          88                           /'| ::  :::'!!       \n"+
-    "           88,dPYba,,adPYba,   ,adPPYba,  88  ,adPPYba,              .:  :/' .::/  !!       \n"+
-    "           88P    \"88\"    '8a a8'     '8a 88 a8P     88              :::/   :::'   !!     \n"+
-    "           88      88      88 8b       d8 88 8PP8888888              `:'::'''!!    !!       \n"+
-    "           88      88      88 '8a,   ,a8' 88 '8b,                      /          :!!.      \n"+
-    "           88      88      88  '\"YbbdP\"'  88  '\"Ybbd8\"'               /     .-~-:  !!!  \n"+
-    "                                                                     /:   :'        !!.     \n"+
-    "                                                                    :::  :'          !!     \n"+
-    "                                                                    |::  |        :!!!!     \n"+
-    "                                                                    `::  :        !!!!'     \n"+
-    "                                                                     |:. `:    .  '!!!      \n"+
-    "                                                                     `::.  \   `::. !'      \n"+
-    "                                                                      _.`::.\     ::        \n"+
-    "                                                                   .-~_____:~~    :'        \n"+
-    "                                                                   ~~~  .-'__..-~'          \n"+
-    "                                                                        ~~~                 \n")
+    "                                                                                 _.-=-._            \n"+
+    "                                                                              o~`  '  > `.          \n"+
+    "                                                                              `.  ,       :         \n"+
+    "                                                                               `'-.__/    `.        \n"+
+    "                                                                                  /       ::        \n"+
+    "                                              88                                 / .:    .:|        \n"+
+    "                                              88                                :       .::!.       \n"+
+    "                                              88                               /'| ::  :::'!!       \n"+
+    "               88,dPYba,,adPYba,   ,adPPYba,  88  ,adPPYba,                  .:  :/' .::/  !!       \n"+
+    "               88P    \"88\"    '8a a8'     '8a 88 a8P     88                  :::/   :::'   !!     \n"+
+    "               88      88      88 8b       d8 88 8PP8888888                  `:'::'''!!    !!       \n"+
+    "               88      88      88 '8a,   ,a8' 88 '8b,                          /          :!!.      \n"+
+    "               88      88      88  '\"YbbdP\"'  88  '\"Ybbd8\"'                   /     .-~-:  !!!  \n"+
+    "                                                                             /:   :'        !!.     \n"+
+    "                                                                            :::  :'          !!     \n"+
+    "                                                                            |::  |        :!!!!     \n"+
+    "                                                                            `::  :        !!!!'     \n"+
+    "                                                                             |:. `:    .  '!!!      \n"+
+    "                                                                             `::.  \   `::. !'      \n"+
+    "                                                                              _.`::.\     ::        \n"+
+    "                                                                           .-~_____:~~    :'        \n"+
+    "                                                                           ~~~  .-'__..-~'          \n"+
+    "                                                                                ~~~                 \n")
 
     print(mole)
 
@@ -78,8 +78,8 @@ def print_help():
     print(help)
 
 def exit_mole():
-    global exit
-    exit = 1
+#    global exit
+#    exit = 1
     print("\nBye!\n")
     time.sleep(2)
     sys.exit()
@@ -98,7 +98,10 @@ def execute_command(command):
     elif command.startswith("get tables from "):
 
         selected_database = command.split("get tables from ")[1]
+
+        start_listener()
         get_tables(selected_database)
+        stop_listener()
 
     elif command == "show databases":
 
@@ -106,7 +109,9 @@ def execute_command(command):
 
     elif command == "get databases":
 
+        start_listener()
         get_databases()
+        stop_listener()
 
     elif command == "help" or command == "?":
 
@@ -358,6 +363,7 @@ def get_databases():
 def on_press(key):
     global exit
     if exit == 1:
+        exit = 0
         sys.exit()
 
 def on_release(key):
@@ -374,6 +380,17 @@ def key_listener():
     with Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
 
+def start_listener():
+    global t
+    t = Thread(target=key_listener)
+    t.start()
+
+def stop_listener():
+    global exit
+    exit = 1
+
+t = 0
+
 # -----------------------------------------------------------------------
 
 # -------------------------------- Main --------------------------------
@@ -382,7 +399,7 @@ def main():
 
     print_promp()
 
-    Thread(target=key_listener).start()
+    #Thread(target=key_listener).start()
 
     while True:
         print(colored("\n mole", "red")+colored("-> ", "yellow"), end="")
