@@ -116,7 +116,7 @@ def execute_command(command):
             #column_list = get_data_columns(selected_database, selected_table)
             column_list = ['id', 'login', 'password', 'email', 'secret', 'activation_code', 'activated', 'reset_code', 'admin']
 
-            print(column_list)
+            #print(column_list)
 
             get_data(selected_database, selected_table, column_list)
 
@@ -213,7 +213,7 @@ def get_data_num_char(selected_database, selected_table, column, data_):
 
         response = r.get(url, params=data, cookies=cookies).text
 
-        print(response)
+        #print(response)
 
         if pass_phrase in response:
             break
